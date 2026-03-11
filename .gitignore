@@ -21,3 +21,4 @@ build/
 # OS Files
 .DS_Store
 Thumbs.db 
+docs/
