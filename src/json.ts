@@ -21,6 +21,35 @@ function fallbackJson(value: unknown): string {
   return result ?? 'null'
 }
 
+function pruneForOutput(value: unknown): unknown {
+  if (value === null || value === undefined) {
+    return undefined
+  }
+
+  if (Array.isArray(value)) {
+    const items = value
+      .map((item) => pruneForOutput(item))
+      .filter((item) => item !== undefined)
+    return items
+  }
+
+  if (typeof value === 'object') {
+    const record = value as JsonRecord
+    const entries = Object.entries(record)
+      .map(([key, currentValue]) => [key, pruneForOutput(currentValue)] as const)
+      .filter(([, currentValue]) => currentValue !== undefined)
+
+    const cleaned = Object.fromEntries(entries)
+    return Object.keys(cleaned).length > 0 ? cleaned : undefined
+  }
+
+  return value
+}
+
+function fullJson(value: unknown): string {
+  return fallbackJson(pruneForOutput(value))
+}
+
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -234,6 +263,7 @@ function formatProducts(products: JsonRecord[]): string {
     lines.push(`${index + 1}. ${asString(product.title) ?? 'Untitled product'}${asString(product.status) ? ` [${asString(product.status)}]` : ''}`)
     lines.push(
       `   ${joinParts([
+        asString(product.id) ? `ID ${asString(product.id)}` : undefined,
         asString(product.handle) ? `Handle ${asString(product.handle)}` : undefined,
         formatPriceRange(product.priceRange),
         asNumber(product.totalInventory) !== undefined
@@ -253,10 +283,6 @@ function formatProducts(products: JsonRecord[]): string {
       lines.push(`   Variants: ${preview}${suffix}`)
     }
 
-    const summary = truncateText(asString(product.description))
-    if (summary) {
-      lines.push(`   Summary: ${summary}`)
-    }
   }
 
   return lines.join('\n')
@@ -356,6 +382,7 @@ function formatCustomers(customers: JsonRecord[]): string {
     lines.push(`${index + 1}. ${formatCustomerInline(customer) ?? 'Unnamed customer'}`)
     lines.push(
       `   ${joinParts([
+        asString(customer.id) ? `ID ${asString(customer.id)}` : undefined,
         asNumber(customer.numberOfOrders) !== undefined
           ? `${String(asNumber(customer.numberOfOrders))} orders`
           : undefined,
@@ -432,6 +459,9 @@ function formatOrders(orders: JsonRecord[]): string {
       formatDate(order.createdAt),
       formatMoney(order.totalPrice),
     ])}` : ''}`)
+    if (asString(order.id)) {
+      lines.push(`   ID: ${asString(order.id)}`)
+    }
 
     const customer = formatCustomerInline(order.customer)
     if (customer) {
@@ -539,11 +569,29 @@ function formatVariantChanges(result: JsonRecord): string {
   }
 
   if (created.length > 0) {
-    lines.push(`Created (${created.length}): ${created.map((variant) => formatVariantInline(variant)).join('; ')}`)
+    lines.push(
+      `Created (${created.length}): ${created
+        .map((variant) =>
+          joinParts([
+            asString(variant.id) ? `ID ${asString(variant.id)}` : undefined,
+            formatVariantInline(variant),
+          ]),
+        )
+        .join('; ')}`,
+    )
   }
 
   if (updated.length > 0) {
-    lines.push(`Updated (${updated.length}): ${updated.map((variant) => formatVariantInline(variant)).join('; ')}`)
+    lines.push(
+      `Updated (${updated.length}): ${updated
+        .map((variant) =>
+          joinParts([
+            asString(variant.id) ? `ID ${asString(variant.id)}` : undefined,
+            formatVariantInline(variant),
+          ]),
+        )
+        .join('; ')}`,
+    )
   }
 
   return lines.join('\n')
@@ -580,7 +628,7 @@ function formatStructuredResult(value: unknown): string | undefined {
 
   const product = asRecord(record.product)
   if (product) {
-    return formatProduct(product)
+    return fullJson({ product })
   }
 
   const customers = asRecordArray(record.customers)
@@ -590,7 +638,7 @@ function formatStructuredResult(value: unknown): string | undefined {
 
   const customer = asRecord(record.customer)
   if (customer) {
-    return formatCustomer(customer)
+    return fullJson({ customer })
   }
 
   const orders = asRecordArray(record.orders)
@@ -600,7 +648,7 @@ function formatStructuredResult(value: unknown): string | undefined {
 
   const order = asRecord(record.order)
   if (order) {
-    return formatOrder(order)
+    return fullJson({ order })
   }
 
   if ('created' in record || 'updated' in record) {
@@ -611,5 +659,5 @@ function formatStructuredResult(value: unknown): string | undefined {
 }
 
 export function stringifyResult(value: unknown): string {
-  return formatStructuredResult(value) ?? fallbackJson(value)
+  return formatStructuredResult(value) ?? fullJson(value)
 }
