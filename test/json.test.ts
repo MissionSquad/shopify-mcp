@@ -33,10 +33,10 @@ describe('stringifyResult', () => {
 
     expect(result).toContain('Products (1)')
     expect(result).toContain('Kathy Smith Exclusive Yoga Mat [ACTIVE]')
+    expect(result).toContain('ID gid://shopify/Product/5886466567')
     expect(result).toContain('Handle kathy-smith-yoga-mat')
     expect(result).toContain('19.99 USD')
     expect(result).toContain('SKU DS-yoga-config')
-    expect(result).toContain('Summary:')
     expect(result).not.toContain('"products"')
   })
 
@@ -76,10 +76,34 @@ describe('stringifyResult', () => {
 
     expect(result).toContain('Orders (1)')
     expect(result).toContain('#77404 - PAID | FULFILLED | 2026-01-12 | 21.6 USD')
+    expect(result).toContain('ID: gid://shopify/Order/6534298960096')
     expect(result).toContain('Customer: Sharon Example <sharon@example.com>')
     expect(result).toContain('Items: 1x 6 Week Leanwalk Program | 27.0 USD | SKU LISTENANDLOSE')
     expect(result).toContain('Tags: nofraud_pass')
     expect(result).not.toContain('"orders"')
+  })
+
+  it('returns full cleaned json for singular detail responses', () => {
+    const result = stringifyResult({
+      product: {
+        id: 'gid://shopify/Product/5886466567',
+        title: 'Kathy Smith Exclusive Yoga Mat',
+        description:
+          'Full product description that should remain intact for verification and editing tasks.',
+        handle: 'kathy-smith-yoga-mat',
+        status: 'ACTIVE',
+        updatedAt: '2025-09-22T14:25:05Z',
+        imageUrl: null,
+        variants: [],
+      },
+    })
+
+    expect(result).toContain('"product": {')
+    expect(result).toContain('"id": "gid://shopify/Product/5886466567"')
+    expect(result).toContain(
+      '"description": "Full product description that should remain intact for verification and editing tasks."',
+    )
+    expect(result).not.toContain('"imageUrl": null')
   })
 
   it('falls back to json for unknown result shapes', () => {
