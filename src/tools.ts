@@ -1950,7 +1950,7 @@ const shopifyTools = [
 
   defineTool({
     name: 'shopify_search_articles',
-    description: 'Search articles across all blogs by title or tag.',
+    description: 'Search articles across all blogs. Accepts Shopify query syntax, e.g. "title:My Article", "tag:sale", or plain text for default matching.',
     parameters: SearchArticlesSchema,
     run: async (client, args) => {
       const query = gql`
@@ -2028,7 +2028,7 @@ const shopifyTools = [
               }
               image {
                 altText
-                originalSrc
+                url
               }
             }
             userErrors {
@@ -2072,7 +2072,7 @@ const shopifyTools = [
           isPublished: article.isPublished,
           publishedAt: article.publishedAt,
           author: article.author?.name || null,
-          imageUrl: article.image?.originalSrc || null,
+          imageUrl: article.image?.url || null,
         },
       }
     },
@@ -2100,7 +2100,7 @@ const shopifyTools = [
               }
               image {
                 altText
-                originalSrc
+                url
               }
             }
             userErrors {
@@ -2144,7 +2144,7 @@ const shopifyTools = [
           isPublished: article.isPublished,
           publishedAt: article.publishedAt,
           author: article.author?.name || null,
-          imageUrl: article.image?.originalSrc || null,
+          imageUrl: article.image?.url || null,
         },
       }
     },
@@ -2262,7 +2262,7 @@ const shopifyTools = [
 
   defineTool({
     name: 'shopify_delete_blog',
-    description: 'Delete a blog and all its articles.',
+    description: 'Delete a blog. Warning: this permanently deletes the blog and all of its articles.',
     parameters: DeleteBlogSchema,
     run: async (client, args) => {
       const mutation = gql`

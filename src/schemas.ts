@@ -339,7 +339,7 @@ export const GetArticleByIdSchema = z.object({
 })
 
 export const SearchArticlesSchema = z.object({
-  query: z.string().min(1).describe('Search query for articles'),
+  query: z.string().min(1).describe('Search query — supports Shopify syntax e.g. "title:My Post", "tag:sale", or plain text'),
   limit: z.number().default(10),
   after: z
     .string()
