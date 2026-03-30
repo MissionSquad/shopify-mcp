@@ -5,6 +5,10 @@ import { z } from 'zod'
 export const GetProductsSchema = z.object({
   searchTitle: z.string().optional(),
   limit: z.number().default(10),
+  after: z
+    .string()
+    .optional()
+    .describe('Pagination cursor from a previous response\'s pageInfo.endCursor'),
 })
 
 export const GetProductByIdSchema = z.object({
@@ -209,6 +213,10 @@ export const DeleteProductVariantsSchema = z.object({
 export const GetCustomersSchema = z.object({
   searchQuery: z.string().optional(),
   limit: z.number().default(10),
+  after: z
+    .string()
+    .optional()
+    .describe('Pagination cursor from a previous response\'s pageInfo.endCursor'),
 })
 
 export const UpdateCustomerSchema = z.object({
@@ -242,6 +250,10 @@ export const GetCustomerOrdersSchema = z.object({
     .regex(/^\d+$/, 'Customer ID must be numeric')
     .describe('Shopify customer ID, numeric excluding gid prefix'),
   limit: z.number().default(10),
+  after: z
+    .string()
+    .optional()
+    .describe('Pagination cursor from a previous response\'s pageInfo.endCursor'),
 })
 
 // ---- Order Schemas ----
@@ -249,6 +261,10 @@ export const GetCustomerOrdersSchema = z.object({
 export const GetOrdersSchema = z.object({
   status: z.enum(['any', 'open', 'closed', 'cancelled']).default('any'),
   limit: z.number().default(10),
+  after: z
+    .string()
+    .optional()
+    .describe('Pagination cursor from a previous response\'s pageInfo.endCursor'),
 })
 
 export const GetOrderByIdSchema = z.object({
@@ -299,11 +315,19 @@ export const UpdateOrderSchema = z.object({
 
 export const GetBlogsSchema = z.object({
   limit: z.number().default(10),
+  after: z
+    .string()
+    .optional()
+    .describe('Pagination cursor from a previous response\'s pageInfo.endCursor'),
 })
 
 export const GetBlogArticlesSchema = z.object({
   blogId: z.string().min(1).describe('Blog GID, e.g. gid://shopify/Blog/123'),
   limit: z.number().default(10),
+  after: z
+    .string()
+    .optional()
+    .describe('Pagination cursor from a previous response\'s pageInfo.endCursor'),
   published: z
     .boolean()
     .optional()
@@ -317,6 +341,10 @@ export const GetArticleByIdSchema = z.object({
 export const SearchArticlesSchema = z.object({
   query: z.string().min(1).describe('Search query for articles'),
   limit: z.number().default(10),
+  after: z
+    .string()
+    .optional()
+    .describe('Pagination cursor from a previous response\'s pageInfo.endCursor'),
 })
 
 export const CreateArticleSchema = z.object({
@@ -396,6 +424,10 @@ export const DeleteBlogSchema = z.object({
 
 export const GetPagesSchema = z.object({
   limit: z.number().default(10),
+  after: z
+    .string()
+    .optional()
+    .describe('Pagination cursor from a previous response\'s pageInfo.endCursor'),
   searchTitle: z.string().optional(),
 })
 

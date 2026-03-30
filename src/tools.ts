@@ -120,11 +120,11 @@ const shopifyTools = [
     description: 'Get all products or search by title from a Shopify store.',
     parameters: GetProductsSchema,
     run: async (client, args) => {
-      const { searchTitle, limit } = args
+      const { searchTitle, limit, after } = args
 
       const query = gql`
-        query GetProducts($first: Int!, $query: String) {
-          products(first: $first, query: $query) {
+        query GetProducts($first: Int!, $after: String, $query: String) {
+          products(first: $first, after: $after, query: $query) {
             edges {
               node {
                 id
@@ -166,12 +166,17 @@ const shopifyTools = [
                 }
               }
             }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
           }
         }
       `
 
       const variables = {
         first: limit,
+        after: after || null,
         query: searchTitle ? `title:*${searchTitle}*` : undefined,
       }
 
@@ -221,7 +226,10 @@ const shopifyTools = [
         }
       })
 
-      return { products }
+      return {
+        products,
+        pageInfo: data.products.pageInfo,
+      }
     },
   }),
 
@@ -1041,11 +1049,11 @@ const shopifyTools = [
     description: 'Get customers or search by name/email.',
     parameters: GetCustomersSchema,
     run: async (client, args) => {
-      const { searchQuery, limit } = args
+      const { searchQuery, limit, after } = args
 
       const query = gql`
-        query GetCustomers($first: Int!, $query: String) {
-          customers(first: $first, query: $query) {
+        query GetCustomers($first: Int!, $after: String, $query: String) {
+          customers(first: $first, after: $after, query: $query) {
             edges {
               node {
                 id
@@ -1081,12 +1089,17 @@ const shopifyTools = [
                 numberOfOrders
               }
             }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
           }
         }
       `
 
       const variables = {
         first: limit,
+        after: after || null,
         query: searchQuery,
       }
 
@@ -1112,7 +1125,10 @@ const shopifyTools = [
         }
       })
 
-      return { customers }
+      return {
+        customers,
+        pageInfo: data.customers.pageInfo,
+      }
     },
   }),
 
@@ -1196,11 +1212,11 @@ const shopifyTools = [
     description: 'Get orders for a specific customer.',
     parameters: GetCustomerOrdersSchema,
     run: async (client, args) => {
-      const { customerId, limit } = args
+      const { customerId, limit, after } = args
 
       const query = gql`
-        query GetCustomerOrders($query: String!, $first: Int!) {
-          orders(query: $query, first: $first) {
+        query GetCustomerOrders($query: String!, $first: Int!, $after: String) {
+          orders(query: $query, first: $first, after: $after) {
             edges {
               node {
                 id
@@ -1262,6 +1278,10 @@ const shopifyTools = [
                 note
               }
             }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
           }
         }
       `
@@ -1269,6 +1289,7 @@ const shopifyTools = [
       const variables = {
         query: `customer_id:${customerId}`,
         first: limit,
+        after: after || null,
       }
 
       const data = (await client.request(query, variables)) as {
@@ -1321,7 +1342,10 @@ const shopifyTools = [
         }
       })
 
-      return { orders }
+      return {
+        orders,
+        pageInfo: data.orders.pageInfo,
+      }
     },
   }),
 
@@ -1332,7 +1356,7 @@ const shopifyTools = [
     description: 'Get orders with optional filtering by status.',
     parameters: GetOrdersSchema,
     run: async (client, args) => {
-      const { status, limit } = args
+      const { status, limit, after } = args
 
       let queryFilter = ''
       if (status !== 'any') {
@@ -1340,8 +1364,8 @@ const shopifyTools = [
       }
 
       const query = gql`
-        query GetOrders($first: Int!, $query: String) {
-          orders(first: $first, query: $query) {
+        query GetOrders($first: Int!, $after: String, $query: String) {
+          orders(first: $first, after: $after, query: $query) {
             edges {
               node {
                 id
@@ -1412,12 +1436,17 @@ const shopifyTools = [
                 note
               }
             }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
           }
         }
       `
 
       const variables = {
         first: limit,
+        after: after || null,
         query: queryFilter || undefined,
       }
 
@@ -1472,7 +1501,10 @@ const shopifyTools = [
         }
       })
 
-      return { orders }
+      return {
+        orders,
+        pageInfo: data.orders.pageInfo,
+      }
     },
   }),
 
@@ -1730,10 +1762,10 @@ const shopifyTools = [
     description: 'List all blogs in the Shopify store.',
     parameters: GetBlogsSchema,
     run: async (client, args) => {
-      const { limit } = args
+      const { limit, after } = args
       const query = gql`
-        query GetBlogs($first: Int!) {
-          blogs(first: $first) {
+        query GetBlogs($first: Int!, $after: String) {
+          blogs(first: $first, after: $after) {
             edges {
               node {
                 id
@@ -1743,11 +1775,18 @@ const shopifyTools = [
                 templateSuffix
               }
             }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
           }
         }
       `
-      const data = (await client.request(query, { first: limit })) as {
-        blogs: { edges: any[] }
+      const data = (await client.request(query, {
+        first: limit,
+        after: after || null,
+      })) as {
+        blogs: { edges: any[]; pageInfo: any }
       }
       const blogs = data.blogs.edges.map((edge: any) => ({
         id: edge.node.id,
@@ -1756,7 +1795,10 @@ const shopifyTools = [
         commentPolicy: edge.node.commentPolicy,
         templateSuffix: edge.node.templateSuffix,
       }))
-      return { blogs }
+      return {
+        blogs,
+        pageInfo: data.blogs.pageInfo,
+      }
     },
   }),
 
@@ -1765,17 +1807,17 @@ const shopifyTools = [
     description: 'List articles for a specific blog.',
     parameters: GetBlogArticlesSchema,
     run: async (client, args) => {
-      const { blogId, limit, published } = args
+      const { blogId, limit, after, published } = args
       let queryFilter: string | null = null
       if (published === true) queryFilter = 'published_status:published'
       else if (published === false) queryFilter = 'published_status:unpublished'
 
       const query = gql`
-        query GetBlogArticles($blogId: ID!, $first: Int!, $query: String) {
+        query GetBlogArticles($blogId: ID!, $first: Int!, $after: String, $query: String) {
           blog(id: $blogId) {
             id
             title
-            articles(first: $first, query: $query) {
+            articles(first: $first, after: $after, query: $query) {
               edges {
                 node {
                   id
@@ -1799,6 +1841,10 @@ const shopifyTools = [
                   }
                 }
               }
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
             }
           }
         }
@@ -1806,6 +1852,7 @@ const shopifyTools = [
       const data = (await client.request(query, {
         blogId,
         first: limit,
+        after: after || null,
         query: queryFilter,
       })) as { blog: any }
 
@@ -1830,6 +1877,7 @@ const shopifyTools = [
       return {
         blog: { id: data.blog.id, title: data.blog.title },
         articles,
+        pageInfo: data.blog.articles.pageInfo,
       }
     },
   }),
@@ -1902,12 +1950,12 @@ const shopifyTools = [
 
   defineTool({
     name: 'shopify_search_articles',
-    description: 'Search articles across all blogs by title or tag. Returns up to `limit` results (no cursor pagination).',
+    description: 'Search articles across all blogs by title or tag.',
     parameters: SearchArticlesSchema,
     run: async (client, args) => {
       const query = gql`
-        query SearchArticles($first: Int!, $query: String!) {
-          articles(first: $first, query: $query) {
+        query SearchArticles($first: Int!, $after: String, $query: String!) {
+          articles(first: $first, after: $after, query: $query) {
             edges {
               node {
                 id
@@ -1926,13 +1974,18 @@ const shopifyTools = [
                 }
               }
             }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
           }
         }
       `
       const data = (await client.request(query, {
         first: args.limit,
+        after: args.after || null,
         query: args.query,
-      })) as { articles: { edges: any[] } }
+      })) as { articles: { edges: any[]; pageInfo: any } }
 
       const articles = data.articles.edges.map((edge: any) => ({
         id: edge.node.id,
@@ -1945,7 +1998,10 @@ const shopifyTools = [
         author: edge.node.author?.name || null,
         blog: edge.node.blog,
       }))
-      return { articles }
+      return {
+        articles,
+        pageInfo: data.articles.pageInfo,
+      }
     },
   }),
 
@@ -2239,10 +2295,10 @@ const shopifyTools = [
     description: 'List pages from the online store.',
     parameters: GetPagesSchema,
     run: async (client, args) => {
-      const { limit, searchTitle } = args
+      const { limit, after, searchTitle } = args
       const query = gql`
-        query GetPages($first: Int!, $query: String) {
-          pages(first: $first, query: $query) {
+        query GetPages($first: Int!, $after: String, $query: String) {
+          pages(first: $first, after: $after, query: $query) {
             edges {
               node {
                 id
@@ -2254,13 +2310,18 @@ const shopifyTools = [
                 updatedAt
               }
             }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
           }
         }
       `
       const data = (await client.request(query, {
         first: limit,
+        after: after || null,
         query: searchTitle ? `title:${searchTitle}` : null,
-      })) as { pages: { edges: any[] } }
+      })) as { pages: { edges: any[]; pageInfo: any } }
 
       const pages = data.pages.edges.map((edge: any) => ({
         id: edge.node.id,
@@ -2271,7 +2332,10 @@ const shopifyTools = [
         createdAt: edge.node.createdAt,
         updatedAt: edge.node.updatedAt,
       }))
-      return { pages }
+      return {
+        pages,
+        pageInfo: data.pages.pageInfo,
+      }
     },
   }),
 
