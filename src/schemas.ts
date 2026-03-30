@@ -294,3 +294,153 @@ export const UpdateOrderSchema = z.object({
     })
     .optional(),
 })
+
+// ---- Blog & Article Schemas ----
+
+export const GetBlogsSchema = z.object({
+  limit: z.number().default(10),
+})
+
+export const GetBlogArticlesSchema = z.object({
+  blogId: z.string().min(1).describe('Blog GID, e.g. gid://shopify/Blog/123'),
+  limit: z.number().default(10),
+  published: z
+    .boolean()
+    .optional()
+    .describe('Filter by published status. Omit for all articles.'),
+})
+
+export const GetArticleByIdSchema = z.object({
+  articleId: z.string().min(1).describe('Article GID'),
+})
+
+export const SearchArticlesSchema = z.object({
+  query: z.string().min(1).describe('Search query for articles'),
+  limit: z.number().default(10),
+})
+
+export const CreateArticleSchema = z.object({
+  blogId: z.string().min(1).describe('Blog GID to publish the article under'),
+  title: z.string().min(1),
+  body: z.string().min(1).describe('HTML content of the article'),
+  summary: z.string().optional().describe('Short summary/excerpt'),
+  handle: z
+    .string()
+    .optional()
+    .describe('URL slug. Auto-generated from title if omitted.'),
+  author: z.string().optional().describe('Author display name'),
+  tags: z.array(z.string()).optional(),
+  isPublished: z.boolean().default(false),
+  publishDate: z
+    .string()
+    .optional()
+    .describe('ISO 8601 datetime for scheduled publishing'),
+  image: z
+    .object({
+      url: z.string().describe('Public URL of the image'),
+      altText: z.string().optional(),
+    })
+    .optional(),
+})
+
+export const UpdateArticleSchema = z.object({
+  id: z.string().min(1).describe('Article GID'),
+  title: z.string().optional(),
+  body: z.string().optional().describe('HTML content'),
+  summary: z.string().optional(),
+  handle: z.string().optional(),
+  author: z.string().optional().describe('Author display name'),
+  tags: z.array(z.string()).optional(),
+  isPublished: z.boolean().optional(),
+  publishDate: z.string().optional(),
+  image: z
+    .object({
+      url: z.string(),
+      altText: z.string().optional(),
+    })
+    .optional(),
+  redirectNewHandle: z
+    .boolean()
+    .optional()
+    .describe('If true, old URL redirects to new handle'),
+})
+
+export const DeleteArticleSchema = z.object({
+  id: z.string().min(1).describe('Article GID'),
+})
+
+export const CreateBlogSchema = z.object({
+  title: z.string().min(1),
+  handle: z.string().optional(),
+  commentPolicy: z
+    .enum(['MODERATED', 'UNMODERATED', 'CLOSED'])
+    .optional(),
+  templateSuffix: z.string().optional().describe('Custom template suffix'),
+})
+
+export const UpdateBlogSchema = z.object({
+  id: z.string().min(1).describe('Blog GID'),
+  title: z.string().optional(),
+  handle: z.string().optional(),
+  commentPolicy: z
+    .enum(['MODERATED', 'UNMODERATED', 'CLOSED'])
+    .optional(),
+  templateSuffix: z.string().optional(),
+})
+
+export const DeleteBlogSchema = z.object({
+  id: z.string().min(1).describe('Blog GID'),
+})
+
+// ---- Page Schemas ----
+
+export const GetPagesSchema = z.object({
+  limit: z.number().default(10),
+  searchTitle: z.string().optional(),
+})
+
+export const GetPageByIdSchema = z.object({
+  pageId: z.string().min(1).describe('Page GID'),
+})
+
+export const CreatePageSchema = z.object({
+  title: z.string().min(1),
+  body: z.string().min(1).describe('HTML content of the page'),
+  handle: z.string().optional(),
+  isPublished: z.boolean().default(false),
+  templateSuffix: z.string().optional(),
+  metafields: z
+    .array(
+      z.object({
+        namespace: z.string(),
+        key: z.string(),
+        value: z.string(),
+        type: z.string(),
+      }),
+    )
+    .optional(),
+})
+
+export const UpdatePageSchema = z.object({
+  id: z.string().min(1).describe('Page GID'),
+  title: z.string().optional(),
+  body: z.string().optional(),
+  handle: z.string().optional(),
+  isPublished: z.boolean().optional(),
+  templateSuffix: z.string().optional(),
+  metafields: z
+    .array(
+      z.object({
+        id: z.string().optional(),
+        namespace: z.string().optional(),
+        key: z.string().optional(),
+        value: z.string(),
+        type: z.string().optional(),
+      }),
+    )
+    .optional(),
+})
+
+export const DeletePageSchema = z.object({
+  id: z.string().min(1).describe('Page GID'),
+})

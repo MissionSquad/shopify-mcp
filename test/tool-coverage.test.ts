@@ -16,6 +16,21 @@ const EXPECTED_TOOL_NAMES = [
   'shopify_get_orders',
   'shopify_get_order_by_id',
   'shopify_update_order',
+  'shopify_get_blogs',
+  'shopify_get_blog_articles',
+  'shopify_get_article_by_id',
+  'shopify_search_articles',
+  'shopify_create_article',
+  'shopify_update_article',
+  'shopify_delete_article',
+  'shopify_create_blog',
+  'shopify_update_blog',
+  'shopify_delete_blog',
+  'shopify_get_pages',
+  'shopify_get_page_by_id',
+  'shopify_create_page',
+  'shopify_update_page',
+  'shopify_delete_page',
 ] as const
 
 describe('Shopify MCP tool coverage', () => {

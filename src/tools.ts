@@ -21,6 +21,21 @@ import {
   GetOrdersSchema,
   GetOrderByIdSchema,
   UpdateOrderSchema,
+  GetBlogsSchema,
+  GetBlogArticlesSchema,
+  GetArticleByIdSchema,
+  SearchArticlesSchema,
+  CreateArticleSchema,
+  UpdateArticleSchema,
+  DeleteArticleSchema,
+  CreateBlogSchema,
+  UpdateBlogSchema,
+  DeleteBlogSchema,
+  GetPagesSchema,
+  GetPageByIdSchema,
+  CreatePageSchema,
+  UpdatePageSchema,
+  DeletePageSchema,
 } from './schemas.js'
 
 type ToolParams = z.ZodTypeAny
@@ -1705,6 +1720,708 @@ const shopifyTools = [
           shippingAddress: order.shippingAddress,
         },
       }
+    },
+  }),
+
+  // ---- Blog & Articles ----
+
+  defineTool({
+    name: 'shopify_get_blogs',
+    description: 'List all blogs in the Shopify store.',
+    parameters: GetBlogsSchema,
+    run: async (client, args) => {
+      const { limit } = args
+      const query = gql`
+        query GetBlogs($first: Int!) {
+          blogs(first: $first) {
+            edges {
+              node {
+                id
+                title
+                handle
+                commentPolicy
+                templateSuffix
+              }
+            }
+          }
+        }
+      `
+      const data = (await client.request(query, { first: limit })) as {
+        blogs: { edges: any[] }
+      }
+      const blogs = data.blogs.edges.map((edge: any) => ({
+        id: edge.node.id,
+        title: edge.node.title,
+        handle: edge.node.handle,
+        commentPolicy: edge.node.commentPolicy,
+        templateSuffix: edge.node.templateSuffix,
+      }))
+      return { blogs }
+    },
+  }),
+
+  defineTool({
+    name: 'shopify_get_blog_articles',
+    description: 'List articles for a specific blog.',
+    parameters: GetBlogArticlesSchema,
+    run: async (client, args) => {
+      const { blogId, limit, published } = args
+      let queryFilter: string | null = null
+      if (published === true) queryFilter = 'published_status:published'
+      else if (published === false) queryFilter = 'published_status:unpublished'
+
+      const query = gql`
+        query GetBlogArticles($blogId: ID!, $first: Int!, $query: String) {
+          blog(id: $blogId) {
+            id
+            title
+            articles(first: $first, query: $query) {
+              edges {
+                node {
+                  id
+                  title
+                  handle
+                  body
+                  summary
+                  tags
+                  isPublished
+                  publishedAt
+                  createdAt
+                  updatedAt
+                  author {
+                    name
+                  }
+                  image {
+                    url
+                    altText
+                    width
+                    height
+                  }
+                }
+              }
+            }
+          }
+        }
+      `
+      const data = (await client.request(query, {
+        blogId,
+        first: limit,
+        query: queryFilter,
+      })) as { blog: any }
+
+      if (!data.blog) {
+        throw new Error(`Blog with ID ${blogId} not found`)
+      }
+
+      const articles = data.blog.articles.edges.map((edge: any) => ({
+        id: edge.node.id,
+        title: edge.node.title,
+        handle: edge.node.handle,
+        body: edge.node.body,
+        summary: edge.node.summary,
+        tags: edge.node.tags,
+        isPublished: edge.node.isPublished,
+        publishedAt: edge.node.publishedAt,
+        createdAt: edge.node.createdAt,
+        updatedAt: edge.node.updatedAt,
+        author: edge.node.author?.name || null,
+        image: edge.node.image,
+      }))
+      return {
+        blog: { id: data.blog.id, title: data.blog.title },
+        articles,
+      }
+    },
+  }),
+
+  defineTool({
+    name: 'shopify_get_article_by_id',
+    description: 'Get a single article by ID with full details.',
+    parameters: GetArticleByIdSchema,
+    run: async (client, args) => {
+      const query = gql`
+        query GetArticle($id: ID!) {
+          article(id: $id) {
+            id
+            title
+            handle
+            body
+            summary
+            tags
+            isPublished
+            publishedAt
+            createdAt
+            updatedAt
+            author {
+              name
+            }
+            blog {
+              id
+              title
+            }
+            image {
+              url
+              altText
+              width
+              height
+            }
+            seo {
+              title
+              description
+            }
+          }
+        }
+      `
+      const data = (await client.request(query, { id: args.articleId })) as {
+        article: any
+      }
+      if (!data.article) {
+        throw new Error(`Article with ID ${args.articleId} not found`)
+      }
+      const a = data.article
+      return {
+        article: {
+          id: a.id,
+          title: a.title,
+          handle: a.handle,
+          body: a.body,
+          summary: a.summary,
+          tags: a.tags,
+          isPublished: a.isPublished,
+          publishedAt: a.publishedAt,
+          createdAt: a.createdAt,
+          updatedAt: a.updatedAt,
+          author: a.author?.name || null,
+          blog: a.blog,
+          image: a.image,
+          seo: a.seo,
+        },
+      }
+    },
+  }),
+
+  defineTool({
+    name: 'shopify_search_articles',
+    description: 'Search articles across all blogs by title or tag.',
+    parameters: SearchArticlesSchema,
+    run: async (client, args) => {
+      const query = gql`
+        query SearchArticles($first: Int!, $query: String!) {
+          articles(first: $first, query: $query) {
+            edges {
+              node {
+                id
+                title
+                handle
+                summary
+                tags
+                isPublished
+                publishedAt
+                author {
+                  name
+                }
+                blog {
+                  id
+                  title
+                }
+              }
+            }
+          }
+        }
+      `
+      const data = (await client.request(query, {
+        first: args.limit,
+        query: args.query,
+      })) as { articles: { edges: any[] } }
+
+      const articles = data.articles.edges.map((edge: any) => ({
+        id: edge.node.id,
+        title: edge.node.title,
+        handle: edge.node.handle,
+        summary: edge.node.summary,
+        tags: edge.node.tags,
+        isPublished: edge.node.isPublished,
+        publishedAt: edge.node.publishedAt,
+        author: edge.node.author?.name || null,
+        blog: edge.node.blog,
+      }))
+      return { articles }
+    },
+  }),
+
+  defineTool({
+    name: 'shopify_create_article',
+    description:
+      'Create a new blog article. Requires a blogId — use shopify_get_blogs first to find the target blog.',
+    parameters: CreateArticleSchema,
+    run: async (client, args) => {
+      const mutation = gql`
+        mutation CreateArticle($article: ArticleCreateInput!) {
+          articleCreate(article: $article) {
+            article {
+              id
+              title
+              handle
+              body
+              summary
+              tags
+              isPublished
+              publishedAt
+              author {
+                name
+              }
+              image {
+                altText
+                originalSrc
+              }
+            }
+            userErrors {
+              code
+              field
+              message
+            }
+          }
+        }
+      `
+      const articleInput: any = {
+        blogId: args.blogId,
+        title: args.title,
+        body: args.body,
+        isPublished: args.isPublished,
+      }
+      if (args.summary !== undefined) articleInput.summary = args.summary
+      if (args.handle !== undefined) articleInput.handle = args.handle
+      if (args.author !== undefined) articleInput.author = { name: args.author }
+      if (args.tags !== undefined) articleInput.tags = args.tags
+      if (args.publishDate !== undefined) articleInput.publishDate = args.publishDate
+      if (args.image !== undefined) articleInput.image = args.image
+
+      const data = (await client.request(mutation, {
+        article: articleInput,
+      })) as {
+        articleCreate: { article: any; userErrors: any[] }
+      }
+      const { article, userErrors } = data.articleCreate
+      if (userErrors?.length > 0) {
+        throw new ShopifyApiError('Failed to create article', userErrors)
+      }
+      return {
+        article: {
+          id: article.id,
+          title: article.title,
+          handle: article.handle,
+          body: article.body,
+          summary: article.summary,
+          tags: article.tags,
+          isPublished: article.isPublished,
+          publishedAt: article.publishedAt,
+          author: article.author?.name || null,
+          imageUrl: article.image?.originalSrc || null,
+        },
+      }
+    },
+  }),
+
+  defineTool({
+    name: 'shopify_update_article',
+    description: 'Update an existing article.',
+    parameters: UpdateArticleSchema,
+    run: async (client, args) => {
+      const mutation = gql`
+        mutation UpdateArticle($id: ID!, $article: ArticleUpdateInput!) {
+          articleUpdate(id: $id, article: $article) {
+            article {
+              id
+              title
+              handle
+              body
+              summary
+              tags
+              isPublished
+              publishedAt
+              author {
+                name
+              }
+              image {
+                altText
+                originalSrc
+              }
+            }
+            userErrors {
+              code
+              field
+              message
+            }
+          }
+        }
+      `
+      const articleInput: any = {}
+      if (args.title !== undefined) articleInput.title = args.title
+      if (args.body !== undefined) articleInput.body = args.body
+      if (args.summary !== undefined) articleInput.summary = args.summary
+      if (args.handle !== undefined) articleInput.handle = args.handle
+      if (args.author !== undefined) articleInput.author = { name: args.author }
+      if (args.tags !== undefined) articleInput.tags = args.tags
+      if (args.isPublished !== undefined) articleInput.isPublished = args.isPublished
+      if (args.publishDate !== undefined) articleInput.publishDate = args.publishDate
+      if (args.image !== undefined) articleInput.image = args.image
+      if (args.redirectNewHandle !== undefined) articleInput.redirectNewHandle = args.redirectNewHandle
+
+      const data = (await client.request(mutation, {
+        id: args.id,
+        article: articleInput,
+      })) as {
+        articleUpdate: { article: any; userErrors: any[] }
+      }
+      const { article, userErrors } = data.articleUpdate
+      if (userErrors?.length > 0) {
+        throw new ShopifyApiError('Failed to update article', userErrors)
+      }
+      return {
+        article: {
+          id: article.id,
+          title: article.title,
+          handle: article.handle,
+          body: article.body,
+          summary: article.summary,
+          tags: article.tags,
+          isPublished: article.isPublished,
+          publishedAt: article.publishedAt,
+          author: article.author?.name || null,
+          imageUrl: article.image?.originalSrc || null,
+        },
+      }
+    },
+  }),
+
+  defineTool({
+    name: 'shopify_delete_article',
+    description: 'Delete an article.',
+    parameters: DeleteArticleSchema,
+    run: async (client, args) => {
+      const mutation = gql`
+        mutation DeleteArticle($id: ID!) {
+          articleDelete(id: $id) {
+            deletedArticleId
+            userErrors {
+              code
+              field
+              message
+            }
+          }
+        }
+      `
+      const data = (await client.request(mutation, { id: args.id })) as {
+        articleDelete: { deletedArticleId: string; userErrors: any[] }
+      }
+      const { deletedArticleId, userErrors } = data.articleDelete
+      if (userErrors?.length > 0) {
+        throw new ShopifyApiError('Failed to delete article', userErrors)
+      }
+      return { deletedArticleId }
+    },
+  }),
+
+  defineTool({
+    name: 'shopify_create_blog',
+    description: 'Create a new blog container.',
+    parameters: CreateBlogSchema,
+    run: async (client, args) => {
+      const mutation = gql`
+        mutation CreateBlog($blog: BlogCreateInput!) {
+          blogCreate(blog: $blog) {
+            blog {
+              id
+              title
+              handle
+              templateSuffix
+              commentPolicy
+            }
+            userErrors {
+              code
+              field
+              message
+            }
+          }
+        }
+      `
+      const blogInput: any = { title: args.title }
+      if (args.handle !== undefined) blogInput.handle = args.handle
+      if (args.commentPolicy !== undefined) blogInput.commentPolicy = args.commentPolicy
+      if (args.templateSuffix !== undefined) blogInput.templateSuffix = args.templateSuffix
+
+      const data = (await client.request(mutation, { blog: blogInput })) as {
+        blogCreate: { blog: any; userErrors: any[] }
+      }
+      const { blog, userErrors } = data.blogCreate
+      if (userErrors?.length > 0) {
+        throw new ShopifyApiError('Failed to create blog', userErrors)
+      }
+      return { blog }
+    },
+  }),
+
+  defineTool({
+    name: 'shopify_update_blog',
+    description: "Update a blog's settings.",
+    parameters: UpdateBlogSchema,
+    run: async (client, args) => {
+      const mutation = gql`
+        mutation UpdateBlog($id: ID!, $blog: BlogUpdateInput!) {
+          blogUpdate(id: $id, blog: $blog) {
+            blog {
+              id
+              title
+              handle
+              templateSuffix
+              commentPolicy
+            }
+            userErrors {
+              code
+              field
+              message
+            }
+          }
+        }
+      `
+      const blogInput: any = {}
+      if (args.title !== undefined) blogInput.title = args.title
+      if (args.handle !== undefined) blogInput.handle = args.handle
+      if (args.commentPolicy !== undefined) blogInput.commentPolicy = args.commentPolicy
+      if (args.templateSuffix !== undefined) blogInput.templateSuffix = args.templateSuffix
+
+      const data = (await client.request(mutation, {
+        id: args.id,
+        blog: blogInput,
+      })) as {
+        blogUpdate: { blog: any; userErrors: any[] }
+      }
+      const { blog, userErrors } = data.blogUpdate
+      if (userErrors?.length > 0) {
+        throw new ShopifyApiError('Failed to update blog', userErrors)
+      }
+      return { blog }
+    },
+  }),
+
+  defineTool({
+    name: 'shopify_delete_blog',
+    description: 'Delete a blog and all its articles.',
+    parameters: DeleteBlogSchema,
+    run: async (client, args) => {
+      const mutation = gql`
+        mutation DeleteBlog($id: ID!) {
+          blogDelete(id: $id) {
+            deletedBlogId
+            userErrors {
+              code
+              field
+              message
+            }
+          }
+        }
+      `
+      const data = (await client.request(mutation, { id: args.id })) as {
+        blogDelete: { deletedBlogId: string; userErrors: any[] }
+      }
+      const { deletedBlogId, userErrors } = data.blogDelete
+      if (userErrors?.length > 0) {
+        throw new ShopifyApiError('Failed to delete blog', userErrors)
+      }
+      return { deletedBlogId }
+    },
+  }),
+
+  // ---- Pages ----
+
+  defineTool({
+    name: 'shopify_get_pages',
+    description: 'List pages from the online store.',
+    parameters: GetPagesSchema,
+    run: async (client, args) => {
+      const { limit, searchTitle } = args
+      const query = gql`
+        query GetPages($first: Int!, $query: String) {
+          pages(first: $first, query: $query) {
+            edges {
+              node {
+                id
+                title
+                handle
+                body
+                isPublished
+                createdAt
+                updatedAt
+              }
+            }
+          }
+        }
+      `
+      const data = (await client.request(query, {
+        first: limit,
+        query: searchTitle ? `title:${searchTitle}` : null,
+      })) as { pages: { edges: any[] } }
+
+      const pages = data.pages.edges.map((edge: any) => ({
+        id: edge.node.id,
+        title: edge.node.title,
+        handle: edge.node.handle,
+        body: edge.node.body,
+        isPublished: edge.node.isPublished,
+        createdAt: edge.node.createdAt,
+        updatedAt: edge.node.updatedAt,
+      }))
+      return { pages }
+    },
+  }),
+
+  defineTool({
+    name: 'shopify_get_page_by_id',
+    description: 'Get a specific page by ID with full details.',
+    parameters: GetPageByIdSchema,
+    run: async (client, args) => {
+      const query = gql`
+        query GetPage($id: ID!) {
+          page(id: $id) {
+            id
+            title
+            handle
+            body
+            isPublished
+            publishedAt
+            createdAt
+            updatedAt
+            templateSuffix
+            seo {
+              title
+              description
+            }
+          }
+        }
+      `
+      const data = (await client.request(query, { id: args.pageId })) as {
+        page: any
+      }
+      if (!data.page) {
+        throw new Error(`Page with ID ${args.pageId} not found`)
+      }
+      return { page: data.page }
+    },
+  }),
+
+  defineTool({
+    name: 'shopify_create_page',
+    description: 'Create a new page (e.g. About Us, Contact, FAQ).',
+    parameters: CreatePageSchema,
+    run: async (client, args) => {
+      const mutation = gql`
+        mutation CreatePage($page: PageCreateInput!) {
+          pageCreate(page: $page) {
+            page {
+              id
+              title
+              handle
+              body
+              isPublished
+            }
+            userErrors {
+              code
+              field
+              message
+            }
+          }
+        }
+      `
+      const pageInput: any = {
+        title: args.title,
+        body: args.body,
+        isPublished: args.isPublished,
+      }
+      if (args.handle !== undefined) pageInput.handle = args.handle
+      if (args.templateSuffix !== undefined) pageInput.templateSuffix = args.templateSuffix
+      if (args.metafields !== undefined) pageInput.metafields = args.metafields
+
+      const data = (await client.request(mutation, { page: pageInput })) as {
+        pageCreate: { page: any; userErrors: any[] }
+      }
+      const { page, userErrors } = data.pageCreate
+      if (userErrors?.length > 0) {
+        throw new ShopifyApiError('Failed to create page', userErrors)
+      }
+      return { page }
+    },
+  }),
+
+  defineTool({
+    name: 'shopify_update_page',
+    description: 'Update an existing page.',
+    parameters: UpdatePageSchema,
+    run: async (client, args) => {
+      const mutation = gql`
+        mutation UpdatePage($id: ID!, $page: PageUpdateInput!) {
+          pageUpdate(id: $id, page: $page) {
+            page {
+              id
+              title
+              handle
+              body
+              isPublished
+            }
+            userErrors {
+              code
+              field
+              message
+            }
+          }
+        }
+      `
+      const pageInput: any = {}
+      if (args.title !== undefined) pageInput.title = args.title
+      if (args.body !== undefined) pageInput.body = args.body
+      if (args.handle !== undefined) pageInput.handle = args.handle
+      if (args.isPublished !== undefined) pageInput.isPublished = args.isPublished
+      if (args.templateSuffix !== undefined) pageInput.templateSuffix = args.templateSuffix
+      if (args.metafields !== undefined) pageInput.metafields = args.metafields
+
+      const data = (await client.request(mutation, {
+        id: args.id,
+        page: pageInput,
+      })) as {
+        pageUpdate: { page: any; userErrors: any[] }
+      }
+      const { page, userErrors } = data.pageUpdate
+      if (userErrors?.length > 0) {
+        throw new ShopifyApiError('Failed to update page', userErrors)
+      }
+      return { page }
+    },
+  }),
+
+  defineTool({
+    name: 'shopify_delete_page',
+    description: 'Delete a page.',
+    parameters: DeletePageSchema,
+    run: async (client, args) => {
+      const mutation = gql`
+        mutation DeletePage($id: ID!) {
+          pageDelete(id: $id) {
+            deletedPageId
+            userErrors {
+              code
+              field
+              message
+            }
+          }
+        }
+      `
+      const data = (await client.request(mutation, { id: args.id })) as {
+        pageDelete: { deletedPageId: string; userErrors: any[] }
+      }
+      const { deletedPageId, userErrors } = data.pageDelete
+      if (userErrors?.length > 0) {
+        throw new ShopifyApiError('Failed to delete page', userErrors)
+      }
+      return { deletedPageId }
     },
   }),
 ] as const
