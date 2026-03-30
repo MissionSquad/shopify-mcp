@@ -1902,7 +1902,7 @@ const shopifyTools = [
 
   defineTool({
     name: 'shopify_search_articles',
-    description: 'Search articles across all blogs by title or tag.',
+    description: 'Search articles across all blogs by title or tag. Returns up to `limit` results (no cursor pagination).',
     parameters: SearchArticlesSchema,
     run: async (client, args) => {
       const query = gql`
@@ -2305,7 +2305,21 @@ const shopifyTools = [
       if (!data.page) {
         throw new Error(`Page with ID ${args.pageId} not found`)
       }
-      return { page: data.page }
+      const p = data.page
+      return {
+        page: {
+          id: p.id,
+          title: p.title,
+          handle: p.handle,
+          body: p.body,
+          isPublished: p.isPublished,
+          publishedAt: p.publishedAt,
+          createdAt: p.createdAt,
+          updatedAt: p.updatedAt,
+          templateSuffix: p.templateSuffix || null,
+          seo: p.seo || null,
+        },
+      }
     },
   }),
 
