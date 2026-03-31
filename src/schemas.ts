@@ -5,6 +5,10 @@ import { z } from 'zod'
 export const GetProductsSchema = z.object({
   searchTitle: z.string().optional(),
   limit: z.number().default(10),
+  after: z
+    .string()
+    .optional()
+    .describe('Pagination cursor from a previous response\'s pageInfo.endCursor'),
 })
 
 export const GetProductByIdSchema = z.object({
@@ -209,6 +213,10 @@ export const DeleteProductVariantsSchema = z.object({
 export const GetCustomersSchema = z.object({
   searchQuery: z.string().optional(),
   limit: z.number().default(10),
+  after: z
+    .string()
+    .optional()
+    .describe('Pagination cursor from a previous response\'s pageInfo.endCursor'),
 })
 
 export const UpdateCustomerSchema = z.object({
@@ -242,6 +250,10 @@ export const GetCustomerOrdersSchema = z.object({
     .regex(/^\d+$/, 'Customer ID must be numeric')
     .describe('Shopify customer ID, numeric excluding gid prefix'),
   limit: z.number().default(10),
+  after: z
+    .string()
+    .optional()
+    .describe('Pagination cursor from a previous response\'s pageInfo.endCursor'),
 })
 
 // ---- Order Schemas ----
@@ -249,6 +261,10 @@ export const GetCustomerOrdersSchema = z.object({
 export const GetOrdersSchema = z.object({
   status: z.enum(['any', 'open', 'closed', 'cancelled']).default('any'),
   limit: z.number().default(10),
+  after: z
+    .string()
+    .optional()
+    .describe('Pagination cursor from a previous response\'s pageInfo.endCursor'),
 })
 
 export const GetOrderByIdSchema = z.object({
@@ -293,4 +309,175 @@ export const UpdateOrderSchema = z.object({
       zip: z.string().optional(),
     })
     .optional(),
+})
+
+// ---- Blog & Article Schemas ----
+
+export const GetBlogsSchema = z.object({
+  limit: z.number().default(10),
+  after: z
+    .string()
+    .optional()
+    .describe('Pagination cursor from a previous response\'s pageInfo.endCursor'),
+})
+
+export const GetBlogArticlesSchema = z.object({
+  blogId: z.string().min(1).describe('Blog GID, e.g. gid://shopify/Blog/123'),
+  limit: z.number().default(10),
+  after: z
+    .string()
+    .optional()
+    .describe('Pagination cursor from a previous response\'s pageInfo.endCursor'),
+  published: z
+    .boolean()
+    .optional()
+    .describe('Filter by published status. Omit for all articles.'),
+})
+
+export const GetArticleByIdSchema = z.object({
+  articleId: z.string().min(1).describe('Article GID'),
+})
+
+export const SearchArticlesSchema = z.object({
+  query: z.string().min(1).describe('Search query — supports Shopify syntax e.g. "title:My Post", "tag:sale", or plain text'),
+  limit: z.number().default(10),
+  after: z
+    .string()
+    .optional()
+    .describe('Pagination cursor from a previous response\'s pageInfo.endCursor'),
+})
+
+export const CreateArticleSchema = z.object({
+  blogId: z.string().min(1).describe('Blog GID to publish the article under'),
+  title: z.string().min(1),
+  body: z.string().min(1).describe('HTML content of the article'),
+  summary: z.string().optional().describe('Short summary/excerpt'),
+  handle: z
+    .string()
+    .optional()
+    .describe('URL slug. Auto-generated from title if omitted.'),
+  author: z.string().optional().describe('Author display name'),
+  tags: z.array(z.string()).optional(),
+  isPublished: z.boolean().default(false),
+  publishDate: z
+    .string()
+    .optional()
+    .describe('ISO 8601 datetime for scheduled publishing'),
+  image: z
+    .object({
+      url: z.string().describe('Public URL of the image'),
+      altText: z.string().optional(),
+    })
+    .optional(),
+})
+
+export const UpdateArticleSchema = z.object({
+  id: z.string().min(1).describe('Article GID'),
+  title: z.string().optional(),
+  body: z.string().optional().describe('HTML content'),
+  summary: z.string().optional(),
+  handle: z.string().optional(),
+  author: z.string().optional().describe('Author display name'),
+  tags: z.array(z.string()).optional(),
+  isPublished: z.boolean().optional(),
+  publishDate: z.string().optional(),
+  image: z
+    .object({
+      url: z.string(),
+      altText: z.string().optional(),
+    })
+    .optional(),
+  redirectNewHandle: z
+    .boolean()
+    .optional()
+    .describe('If true, old URL redirects to new handle'),
+})
+
+export const DeleteArticleSchema = z.object({
+  id: z.string().min(1).describe('Article GID'),
+})
+
+export const CreateBlogSchema = z.object({
+  title: z.string().min(1),
+  handle: z.string().optional(),
+  commentPolicy: z
+    .enum(['MODERATED', 'UNMODERATED', 'CLOSED'])
+    .optional(),
+  templateSuffix: z.string().optional().describe('Custom template suffix'),
+})
+
+export const UpdateBlogSchema = z.object({
+  id: z.string().min(1).describe('Blog GID'),
+  title: z.string().optional(),
+  handle: z.string().optional(),
+  commentPolicy: z
+    .enum(['MODERATED', 'UNMODERATED', 'CLOSED'])
+    .optional(),
+  templateSuffix: z.string().optional(),
+})
+
+export const DeleteBlogSchema = z.object({
+  id: z.string().min(1).describe('Blog GID'),
+})
+
+// ---- Page Schemas ----
+
+export const GetPagesSchema = z.object({
+  limit: z.number().default(10),
+  after: z
+    .string()
+    .optional()
+    .describe('Pagination cursor from a previous response\'s pageInfo.endCursor'),
+  searchTitle: z.string().optional(),
+})
+
+export const GetPageByIdSchema = z.object({
+  pageId: z.string().min(1).describe('Page GID'),
+})
+
+export const CreatePageSchema = z.object({
+  title: z.string().min(1),
+  body: z.string().min(1).describe('HTML content of the page'),
+  handle: z.string().optional(),
+  isPublished: z.boolean().default(false),
+  templateSuffix: z.string().optional(),
+  metafields: z
+    .array(
+      z.object({
+        namespace: z.string().describe('Metafield namespace, e.g. "custom"'),
+        key: z.string().describe('Metafield key, e.g. "subtitle"'),
+        value: z.string(),
+        type: z
+          .string()
+          .describe("e.g. 'single_line_text_field', 'json', 'number_integer'"),
+      }),
+    )
+    .optional(),
+})
+
+export const UpdatePageSchema = z.object({
+  id: z.string().min(1).describe('Page GID'),
+  title: z.string().optional(),
+  body: z.string().optional(),
+  handle: z.string().optional(),
+  isPublished: z.boolean().optional(),
+  templateSuffix: z.string().optional(),
+  metafields: z
+    .array(
+      z.object({
+        id: z.string().optional().describe('Metafield GID for updates. Omit to create new.'),
+        namespace: z.string().optional().describe('Metafield namespace, e.g. "custom"'),
+        key: z.string().optional().describe('Metafield key, e.g. "subtitle"'),
+        value: z.string(),
+        type: z
+          .string()
+          .optional()
+          .describe("e.g. 'single_line_text_field', 'json', 'number_integer'"),
+      }),
+    )
+    .optional(),
+})
+
+export const DeletePageSchema = z.object({
+  id: z.string().min(1).describe('Page GID'),
 })

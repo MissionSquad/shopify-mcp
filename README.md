@@ -1,6 +1,6 @@
 # @missionsquad/mcp-shopify
 
-MCP Server for the Shopify GraphQL Admin API, built on `@missionsquad/fastmcp`. Provides tools for managing products, customers, and orders through the Model Context Protocol.
+MCP Server for the Shopify GraphQL Admin API, built on `@missionsquad/fastmcp`. Provides tools for managing products, customers, orders, blogs, articles, and pages through the Model Context Protocol.
 
 Designed for the MissionSquad platform where user-specific Shopify credentials are injected as hidden secrets at tool-call time via `mcp-api`. Also supports standalone local development with environment variables.
 
@@ -9,6 +9,8 @@ Designed for the MissionSquad platform where user-specific Shopify credentials a
 - **Product Management**: Full CRUD for products, variants, and options
 - **Customer Management**: Query customers and update customer data
 - **Order Management**: Query and update orders
+- **Blog & Article Management**: Full CRUD for blogs and articles, plus search
+- **Page Management**: Full CRUD for static pages (About Us, Contact, FAQ, etc.)
 - **GraphQL Integration**: Direct integration with Shopify's GraphQL Admin API
 - **Hidden Secret Injection**: Credentials are injected per-call via `context.extraArgs` — never exposed to the LLM
 - **Multi-Tenant**: Supports concurrent users with different Shopify stores and credentials
@@ -176,6 +178,72 @@ node dist/index.js
     - `id` (string, required): Order GID
     - `tags`, `email`, `note`, `customAttributes`, `metafields`, `shippingAddress` (all optional)
 
+### Blog & Article Management
+
+> **Required scopes:** `read_content`, `write_content`
+
+15. **`shopify_get_blogs`** — List all blogs
+    - `limit` (number, default: 10)
+
+16. **`shopify_get_blog_articles`** — List articles for a specific blog
+    - `blogId` (string, required): Blog GID
+    - `limit` (number, default: 10)
+    - `published` (boolean, optional): Filter by published status
+
+17. **`shopify_get_article_by_id`** — Get a single article by ID
+    - `articleId` (string, required): Article GID
+
+18. **`shopify_search_articles`** — Search articles across all blogs
+    - `query` (string, required): Search query
+    - `limit` (number, default: 10)
+
+19. **`shopify_create_article`** — Create a new blog article
+    - `blogId` (string, required): Blog GID
+    - `title` (string, required)
+    - `body` (string, required): HTML content
+    - `summary`, `handle`, `author`, `tags`, `isPublished`, `publishDate`, `image` (all optional)
+
+20. **`shopify_update_article`** — Update an existing article
+    - `id` (string, required): Article GID
+    - `title`, `body`, `summary`, `handle`, `author`, `tags`, `isPublished`, `publishDate`, `image`, `redirectNewHandle` (all optional)
+
+21. **`shopify_delete_article`** — Delete an article
+    - `id` (string, required): Article GID
+
+22. **`shopify_create_blog`** — Create a new blog container
+    - `title` (string, required)
+    - `handle`, `commentPolicy`, `templateSuffix` (all optional)
+
+23. **`shopify_update_blog`** — Update a blog's settings
+    - `id` (string, required): Blog GID
+    - `title`, `handle`, `commentPolicy`, `templateSuffix` (all optional)
+
+24. **`shopify_delete_blog`** — Delete a blog and all its articles
+    - `id` (string, required): Blog GID
+
+### Page Management
+
+> **Required scopes:** `read_content`, `write_content`
+
+25. **`shopify_get_pages`** — List pages from the online store
+    - `limit` (number, default: 10)
+    - `searchTitle` (string, optional): Filter by title
+
+26. **`shopify_get_page_by_id`** — Get a specific page by ID
+    - `pageId` (string, required): Page GID
+
+27. **`shopify_create_page`** — Create a new page (e.g. About Us, Contact, FAQ)
+    - `title` (string, required)
+    - `body` (string, required): HTML content
+    - `handle`, `isPublished`, `templateSuffix`, `metafields` (all optional)
+
+28. **`shopify_update_page`** — Update an existing page
+    - `id` (string, required): Page GID
+    - `title`, `body`, `handle`, `isPublished`, `templateSuffix`, `metafields` (all optional)
+
+29. **`shopify_delete_page`** — Delete a page
+    - `id` (string, required): Page GID
+
 ## Development
 
 ```bash
@@ -199,7 +267,7 @@ src/
   index.ts              # FastMCP entrypoint (stdio transport)
   config.ts             # Secret resolution (extraArgs -> env fallback)
   shopify-client.ts     # Per-call GraphQLClient factory + token exchange
-  tools.ts              # All 14 tool definitions + registration
+  tools.ts              # All 29 tool definitions + registration
   schemas.ts            # Zod schemas (functional params only, no secrets)
   errors.ts             # Custom error classes + toUserError converter
   logger.ts             # Stderr logger
