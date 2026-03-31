@@ -444,10 +444,12 @@ export const CreatePageSchema = z.object({
   metafields: z
     .array(
       z.object({
-        namespace: z.string(),
-        key: z.string(),
+        namespace: z.string().describe('Metafield namespace, e.g. "custom"'),
+        key: z.string().describe('Metafield key, e.g. "subtitle"'),
         value: z.string(),
-        type: z.string(),
+        type: z
+          .string()
+          .describe("e.g. 'single_line_text_field', 'json', 'number_integer'"),
       }),
     )
     .optional(),
@@ -463,11 +465,14 @@ export const UpdatePageSchema = z.object({
   metafields: z
     .array(
       z.object({
-        id: z.string().optional(),
-        namespace: z.string().optional(),
-        key: z.string().optional(),
+        id: z.string().optional().describe('Metafield GID for updates. Omit to create new.'),
+        namespace: z.string().optional().describe('Metafield namespace, e.g. "custom"'),
+        key: z.string().optional().describe('Metafield key, e.g. "subtitle"'),
         value: z.string(),
-        type: z.string().optional(),
+        type: z
+          .string()
+          .optional()
+          .describe("e.g. 'single_line_text_field', 'json', 'number_integer'"),
       }),
     )
     .optional(),
